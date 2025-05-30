@@ -1,0 +1,49 @@
+- name: Подготовка и развёртывание WordPress
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Путь к каталогу, который Docker потом смонтирует как /var/www/html
+    wp_path: "{{ playbook_dir }}/wordpress"
+    db_name: wordpress
+    db_user: root
+    db_password: root1234
+    db_host: db
+
+  tasks:
+    - name: Создать папку wordpress
+      file:
+        path: "{{ wp_path }}"
+        state: directory
+
+    - name: Скачать архив WordPress
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: "{{ wp_path }}/latest.tar.gz"
+
+    - name: Распаковать WordPress
+      unarchive:
+        src: "{{ wp_path }}/latest.tar.gz"
+        dest: "{{ wp_path }}"
+        remote_src: no
+        extra_opts:
+          - --strip-components=1
+
+    - name: Удалить скачанный архив
+      file:
+        path: "{{ wp_path }}/latest.tar.gz"
+        state: absent
+
+    - name: Сгенерировать wp-config.php из шаблона
+      template:
+        src: templates/wp-config.php.j2
+        dest: "{{ wp_path }}/wp-config.php"
+        mode: '0644'
+
+    - name: Выставить права на файлы WordPress
+      file:
+        path: "{{ wp_path }}"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_gid }}"
+        recurse: yes
